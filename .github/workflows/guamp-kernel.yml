@@ -39,7 +39,7 @@ jobs:
 
       - name: Clone kernel source
         run: |
-          git clone https://github.com/felipeskyy/kernel_motorola_sm6225.git -b lineage-23.1-ak3 kernel_src
+          git clone --depth=1 https://github.com/felipeskyy/kernel_motorola_sm6225.git -b lineage-23.1-ak3 kernel_src
 
       - name: Build Kernel
         run: |
