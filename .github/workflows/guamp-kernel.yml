@@ -18,15 +18,15 @@ jobs:
             build-essential bc bison flex libssl-dev libncurses-dev \
             zip wget curl git libkmod-dev
 
-      - name: Cache Clang Toolchain
-        id: cache-toolchain
+      - name: Setup Clang Cache
+        id: setup-llvm
         uses: actions/cache@v4
         with:
           path: toolchain
           key: clang-r547379-v1
 
       - name: Download AOSP Clang
-        if: steps.cache-toolchain.outputs.cache-hit != 'true'
+        if: steps.setup-llvm.outputs.cache-hit != 'true'
         run: |
           mkdir -p toolchain
           cd toolchain
@@ -41,10 +41,6 @@ jobs:
         run: |
           git clone https://github.com/felipeskyy/kernel_motorola_sm6225.git -b lineage-23.1-ak3 kernel_src
 
-      - name: Clone AnyKernel3
-        run: |
-          git clone --depth=1 https://github.com/felipeskyy/AnyKernel3.git anykernel
-
       - name: Build Kernel
         run: |
           cd kernel_src
@@ -55,7 +51,7 @@ jobs:
             arch/arm64/configs/vendor/ext_config/guamp-default.config
           cp .config arch/arm64/configs/vendor/guamp-perf_defconfig
 
-          # Set environment for compilation
+          # Set environment
           export PATH="$PWD/../toolchain/clang/bin:$PATH"
           export ARCH=arm64
           export SUBARCH=arm64
@@ -64,13 +60,15 @@ jobs:
           export LLVM_IAS=1
           export CROSS_COMPILE=aarch64-linux-gnu-
 
-          # Clean and build
+          # Build
           make mrproper
           make O=out ARCH=arm64 vendor/guamp-perf_defconfig
           make O=out -j$(nproc --all)
 
       - name: Setup AnyKernel
         run: |
+          git clone --depth=1 https://github.com/felipeskyy/AnyKernel3.git anykernel
+
           cd kernel_src
           if [ -f out/arch/arm64/boot/Image ]; then
             cp out/arch/arm64/boot/Image ../anykernel/
@@ -79,11 +77,9 @@ jobs:
             exit 1
           fi
 
-          # Set build date
           DATE=$(date +'%Y%m%d')
           echo "DATE=$DATE" >> $GITHUB_ENV
 
-          # Zip
           cd ../anykernel
           zip -r9 ../lineage-23.1-kernel_${DATE}.zip ./*
 
